@@ -1,0 +1,8 @@
+# Dependency directories
+node_modules/
+
+# Internal directories
+.*/
+
+# Logs
+npm-debug*

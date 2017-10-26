@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" style="margin:0;width:100%;height:100%;overflow:hidden;">
+<head>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/TUORIS/client.js"></script>
+<title></title>
+</head>
+<body style="margin:0;width:100%;height:100%;overflow:hidden;">
+    <svg id="SVGelement" style="margin:0;width:100%;height:100%;overflow:hidden;"></svg>
+    <script>
+        var columns = 16;
+        var rows = 4;
+
+        var urlParams = new URLSearchParams(window.location.search);
+        var rawId = urlParams.get('id');
+        if(rawId) {
+            var id = parseInt(rawId)-1;
+            var colsRaw = parseInt(urlParams.get('columns'));
+            if(colsRaw) columns = colsRaw;
+            var rowsRaw = parseInt(urlParams.get('rows'));
+            if(rowsRaw) rows = rowsRaw;
+
+            var normalizedViewbox = getNormalizedViewbox(id, rows, columns);
+        } else {
+            var normalizedViewbox = getNormalizedViewbox(0, 1, 1);
+        }
+
+        var SVGviewer = document.getElementById("SVGelement");
+        view(SVGviewer, normalizedViewbox);
+    </script>
+</body>
+</html>
