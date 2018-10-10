@@ -3,6 +3,8 @@ const fs = require('fs');
 const express = require('express');
 const http = require('http');
 const io = require('socket.io');
+const request = require('sync-request');
+const uri2path = require('file-uri-to-path');
 
 /**
   * VisualizationServer
@@ -116,7 +118,8 @@ class VisualizationServer {
       } else {
         try {
           let injectedCode = fs.readFileSync('inject.js', 'utf8');
-          let visualizationDocument = fs.readFileSync(this.url, 'utf8'); 
+          let visualizationDocument = this.url.startsWith('http') ? request('GET', this.url).getBody() :
+              fs.readFileSync(this.url.startsWith('file') ? uri2path(this.url) : this.url, 'utf8');
   
           this.served = true;
           let string = "<script src='/socket.io/socket.io.js'></script>";
