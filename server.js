@@ -5,6 +5,10 @@ const http = require('http');
 const io = require('socket.io');
 const request = require('sync-request');
 const uri2path = require('file-uri-to-path');
+const { JSDOM } = require('jsdom');
+const jquery = require('jquery');
+const { URL } = require('url');
+const proxy = require('express-http-proxy');
 
 /**
   * VisualizationServer
@@ -117,16 +121,30 @@ class VisualizationServer {
         res.send('The control can only be launched once. Reload the visualization to launch a new control.');
       } else {
         try {
-          let injectedCode = fs.readFileSync('inject.js', 'utf8');
-          let visualizationDocument = this.url.startsWith('http') ? request('GET', this.url).getBody() :
-              fs.readFileSync(this.url.startsWith('file') ? uri2path(this.url) : this.url, 'utf8');
-  
+          let visualizationDocument;
+          if (this.url.startsWith('http')) {
+            const dom = new JSDOM('' + request('GET', this.url).getBody());
+            const $ = jquery(dom.window);
+            $('script, source, img, frame, iframe').each((_i, e) => {
+              if (e.src && e.src !== '') {
+                e.src = new URL(e.src, this.url).href;
+              }
+            });
+            $('a, link').each((_i, e) => {
+              if (e.href && e.href !== '') {
+                e.href = new URL(e.href, this.url).href;
+              }
+            });
+            visualizationDocument = dom.window.document.documentElement.outerHTML;
+          } else {
+            visualizationDocument = fs.readFileSync(this.url.startsWith('file') ? uri2path(this.url) : this.url, 'utf8');
+          }
           this.served = true;
           let string = "<script src='/socket.io/socket.io.js'></script>";
           string += "<script type='text/javascript'>";
           Object.keys(this.variables).forEach((variable) => { string += `var ${variable} = '${this.variables[variable]}';`; });
           string += `var ___ID___ =${this.id};`;
-          string += injectedCode;
+          string += fs.readFileSync('inject.js', 'utf8');
           string += '</script>';
           string += visualizationDocument;
           res.send(string);
@@ -136,6 +154,26 @@ class VisualizationServer {
         }
       }
     });
+    const self = this;
+    function getURL() {
+      return self.url;
+    }
+    this.app.use('/control', proxy(getURL, {
+      proxyReqPathResolver: (req) => {
+        let parts = req.url.split('?');
+        let queryString = parts[1];
+        let updatedPath = new URL(parts[0].substring(1), self.url).href;
+        return updatedPath + (queryString ? '?' + queryString : '');
+      }
+    }));
+    this.app.use('/', proxy(getURL, {
+      proxyReqPathResolver: (req) => {
+        let parts = req.url.split('?');
+        let queryString = parts[1];
+        let updatedPath = new URL('../' + parts[0].substring(1), self.url).href;
+        return updatedPath + (queryString ? '?' + queryString : '');
+      }
+    }));
   }
 
   /**
@@ -379,8 +417,8 @@ class VisualizationServer {
   startServer() {
     this.http.listen(this.port, () => {
       this.initializeFileServer();
-      this.initializeControl();
       this.initializeCommandServer();
+      this.initializeControl();
       this.setContent(this.defaultPage);
       console.log('Server started at port %s', this.port);
     });
