@@ -17,9 +17,9 @@ class VisualizationServer {
   /**
    * Create and initialize a server instance
    */
-  static initializeServer(port, interactive, defaultPage, folders, variables) {
+  static initializeServer(port, interactive, defaultPage, folders, localfileurls, variables) {
     puppeteer.launch({ args: ['--no-sandbox'] }).then((browser) => {
-      const visServer = new VisualizationServer(browser, port, interactive, defaultPage, folders, variables);
+      const visServer = new VisualizationServer(browser, port, interactive, defaultPage, folders, localfileurls, variables);
       visServer.startServer();
     });
   }
@@ -35,7 +35,7 @@ class VisualizationServer {
   /**
    * Private constructor (do not call it!)
    */
-  constructor(browser, port, interactive, defaultPage, folders, variables) {
+  constructor(browser, port, interactive, defaultPage, folders, localfileurls, variables) {
     this.app = express();
     this.http = http.Server(this.app);
     this.io = io(this.http);
@@ -45,6 +45,7 @@ class VisualizationServer {
     this.interactive = interactive;
     this.defaultPage = defaultPage;
     this.folders = folders;
+    this.localfileurls = localfileurls;
     this.variables = variables;
     this.resetStatus();
   }
@@ -136,8 +137,11 @@ class VisualizationServer {
               }
             });
             visualizationDocument = dom.window.document.documentElement.outerHTML;
-          } else {
+          } else if (this.localfileurls) {
             visualizationDocument = fs.readFileSync(this.url.startsWith('file') ? uri2path(this.url) : this.url, 'utf8');
+          } else {
+            res.send('Unable to load URL.');
+            return;
           }
           this.served = true;
           let string = "<script src='/socket.io/socket.io.js'></script>";
