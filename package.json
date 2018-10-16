@@ -11,7 +11,12 @@
     "socket.io": "^2.0.3",
     "yargs": "^8.0.2",
     "puppeteer": "^0.10.2",
-    "eslint": "^4.7.2"
+    "eslint": "^4.7.2",
+    "file-uri-to-path": "^1.0.0",
+    "sync-request": "^6.0.0",
+    "jsdom": "^12.2.0",
+    "jquery": "^3.3.1",
+    "express-http-proxy": "^1.4.0"
   },
   "devDependencies": {
     "eslint-config-airbnb-base": "^12.0.1",

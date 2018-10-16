@@ -14,6 +14,10 @@ const args = require('yargs')
     alias: 'i', describe: 'Set interactive mode', type: 'boolean', default: false
   })
 
+  .option('localfileurls', {
+    alias: 'l', describe: 'Use local file urls', type: 'boolean', default: false
+  })
+
   .option('port', {
     alias: 'p', describe: 'Set port (>= 0 and < 65536)', type: 'number', default: 8080
   })
@@ -42,4 +46,4 @@ const args = require('yargs')
 
 const variables = args.variables ? Object.assign({}, ...args.variables.map(i => i.split('=')).map(i => ({ [i[0]]: i[1] }))) : {};
 
-require('./server.js').VisualizationServer.initializeServer(args.port, args.interactive, args.default, args.folders, variables);
+require('./server.js').VisualizationServer.initializeServer(args.port, args.interactive, args.default, args.folders, args.localfileurls, variables);

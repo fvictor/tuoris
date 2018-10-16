@@ -109,11 +109,13 @@
       const styleSheet = document.styleSheets[i];
       const myStyleSheet = [];
       myStyleSheets.push(myStyleSheet);
-      if (styleSheet.cssRules) {
-        for (let j = 0; j < styleSheet.cssRules.length; j += 1) {
-          myStyleSheet.push(styleSheet.cssRules[j].cssText);
+      try {
+        if (styleSheet.cssRules) {
+          for (let j = 0; j < styleSheet.cssRules.length; j += 1) {
+            myStyleSheet.push(styleSheet.cssRules[j].cssText);
+          }
         }
-      }
+      } catch (e) {}
     }
     changes.push(5, myStyleSheets);
   });

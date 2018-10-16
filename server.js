@@ -3,6 +3,12 @@ const fs = require('fs');
 const express = require('express');
 const http = require('http');
 const io = require('socket.io');
+const request = require('sync-request');
+const uri2path = require('file-uri-to-path');
+const { JSDOM } = require('jsdom');
+const jquery = require('jquery');
+const { URL } = require('url');
+const proxy = require('express-http-proxy');
 
 /**
   * VisualizationServer
@@ -11,9 +17,9 @@ class VisualizationServer {
   /**
    * Create and initialize a server instance
    */
-  static initializeServer(port, interactive, defaultPage, folders, variables) {
-    puppeteer.launch().then((browser) => {
-      const visServer = new VisualizationServer(browser, port, interactive, defaultPage, folders, variables);
+  static initializeServer(port, interactive, defaultPage, folders, localfileurls, variables) {
+    puppeteer.launch({ args: ['--no-sandbox'] }).then((browser) => {
+      const visServer = new VisualizationServer(browser, port, interactive, defaultPage, folders, localfileurls, variables);
       visServer.startServer();
     });
   }
@@ -29,7 +35,7 @@ class VisualizationServer {
   /**
    * Private constructor (do not call it!)
    */
-  constructor(browser, port, interactive, defaultPage, folders, variables) {
+  constructor(browser, port, interactive, defaultPage, folders, localfileurls, variables) {
     this.app = express();
     this.http = http.Server(this.app);
     this.io = io(this.http);
@@ -39,6 +45,7 @@ class VisualizationServer {
     this.interactive = interactive;
     this.defaultPage = defaultPage;
     this.folders = folders;
+    this.localfileurls = localfileurls;
     this.variables = variables;
     this.resetStatus();
   }
@@ -115,15 +122,33 @@ class VisualizationServer {
         res.send('The control can only be launched once. Reload the visualization to launch a new control.');
       } else {
         try {
-          let injectedCode = fs.readFileSync('inject.js', 'utf8');
-          let visualizationDocument = fs.readFileSync(this.url, 'utf8'); 
-  
+          let visualizationDocument;
+          if (this.url.startsWith('http')) {
+            const dom = new JSDOM('' + request('GET', this.url).getBody());
+            const $ = jquery(dom.window);
+            $('script, source, img, frame, iframe').each((_i, e) => {
+              if (e.src && e.src !== '') {
+                e.src = new URL(e.src, this.url).href;
+              }
+            });
+            $('a, link').each((_i, e) => {
+              if (e.href && e.href !== '') {
+                e.href = new URL(e.href, this.url).href;
+              }
+            });
+            visualizationDocument = dom.window.document.documentElement.outerHTML;
+          } else if (this.localfileurls) {
+            visualizationDocument = fs.readFileSync(this.url.startsWith('file') ? uri2path(this.url) : this.url, 'utf8');
+          } else {
+            res.send('Unable to load URL.');
+            return;
+          }
           this.served = true;
           let string = "<script src='/socket.io/socket.io.js'></script>";
           string += "<script type='text/javascript'>";
           Object.keys(this.variables).forEach((variable) => { string += `var ${variable} = '${this.variables[variable]}';`; });
           string += `var ___ID___ =${this.id};`;
-          string += injectedCode;
+          string += fs.readFileSync('inject.js', 'utf8');
           string += '</script>';
           string += visualizationDocument;
           res.send(string);
@@ -133,6 +158,26 @@ class VisualizationServer {
         }
       }
     });
+    const self = this;
+    function getURL() {
+      return self.url;
+    }
+    this.app.use('/control', proxy(getURL, {
+      proxyReqPathResolver: (req) => {
+        let parts = req.url.split('?');
+        let queryString = parts[1];
+        let updatedPath = new URL(parts[0].substring(1), self.url).href;
+        return updatedPath + (queryString ? '?' + queryString : '');
+      }
+    }));
+    this.app.use('/', proxy(getURL, {
+      proxyReqPathResolver: (req) => {
+        let parts = req.url.split('?');
+        let queryString = parts[1];
+        let updatedPath = new URL('../' + parts[0].substring(1), self.url).href;
+        return updatedPath + (queryString ? '?' + queryString : '');
+      }
+    }));
   }
 
   /**
@@ -376,8 +421,8 @@ class VisualizationServer {
   startServer() {
     this.http.listen(this.port, () => {
       this.initializeFileServer();
-      this.initializeControl();
       this.initializeCommandServer();
+      this.initializeControl();
       this.setContent(this.defaultPage);
       console.log('Server started at port %s', this.port);
     });
