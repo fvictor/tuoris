@@ -15,7 +15,7 @@ $ npm install
 # Execution
 Given a *yourvisualization.html* document containing a SVG element, run: 
 ```sh
-$ node index.js -d yourvisualization.html
+$ node index.js -l -d yourvisualization.html
 ```
 The visualization will be available at http://*\<server-ip\>*:8080?id=*\<id\>*&rows=*\<rows\>*&columns=*\<columns\>*, where:
   * *\<id\>* is the id of the screen, starting from 1 and assuming that screen indices grow from left to right and from bottom to top.
