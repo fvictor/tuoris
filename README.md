@@ -1,4 +1,6 @@
 # Tuoris
+[![Build Status](https://travis-ci.com/fvictor/tuoris.svg?branch=master)](https://travis-ci.com/fvictor/tuoris)
+
 Tuoris is a middleware for SVG distributed visualization in scalable resolution tiled display walls. Tuoris allows you to efficiently render complex, interactive and resolution independent visualizations, built using standard web technologies, in large-scale tiled display walls.
 
 ![](https://user-images.githubusercontent.com/1686431/35565570-58ae9d80-05be-11e8-9889-e9cd592c4024.JPG)
