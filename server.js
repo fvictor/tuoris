@@ -18,7 +18,7 @@ class VisualizationServer {
    * Create and initialize a server instance
    */
   static initializeServer(port, interactive, defaultPage, folders, localfileurls, variables) {
-    puppeteer.launch({ args: ['--no-sandbox'] }).then((browser) => {
+    puppeteer.launch({ executablePath: process.env.CHROME_BIN || null, args: ['--no-sandbox'] }).then((browser) => {
       const visServer = new VisualizationServer(browser, port, interactive, defaultPage, folders, localfileurls, variables);
       visServer.startServer();
     });
