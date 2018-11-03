@@ -46,4 +46,8 @@ const args = require('yargs')
 
 const variables = args.variables ? Object.assign({}, ...args.variables.map(i => i.split('=')).map(i => ({ [i[0]]: i[1] }))) : {};
 
-require('./server.js').VisualizationServer.initializeServer(args.port, args.interactive, args.default, args.folders, args.localfileurls, variables);
+const { VisualizationServer } = new require('./server.js');
+
+const server = new VisualizationServer(args.port, args.interactive, args.default, args.folders, args.localfileurls, variables);
+server.startServer()
+  .then( () => console.log('Server started at port %s', server.port));

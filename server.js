@@ -14,15 +14,6 @@ const proxy = require('express-http-proxy');
   * VisualizationServer
   */
 class VisualizationServer {
-  /**
-   * Create and initialize a server instance
-   */
-  static initializeServer(port, interactive, defaultPage, folders, localfileurls, variables) {
-    puppeteer.launch({ executablePath: process.env.CHROME_BIN || null, args: ['--no-sandbox'] }).then((browser) => {
-      const visServer = new VisualizationServer(browser, port, interactive, defaultPage, folders, localfileurls, variables);
-      visServer.startServer();
-    });
-  }
 
   /**
    * Check if the rect and the viewbox are overlaping
@@ -35,12 +26,11 @@ class VisualizationServer {
   /**
    * Private constructor (do not call it!)
    */
-  constructor(browser, port, interactive, defaultPage, folders, localfileurls, variables) {
+  constructor(port, interactive, defaultPage, folders, localfileurls, variables) {
     this.app = express();
     this.http = http.Server(this.app);
     this.io = io(this.http);
     this.nio = this.io.of('/dist-view-namespace');
-    this.browser = browser;
     this.port = port;
     this.interactive = interactive;
     this.defaultPage = defaultPage;
@@ -205,7 +195,7 @@ class VisualizationServer {
    * Initialize the page of the visualization
    */
   initPage(url) {
-    this.browser.newPage().then((page) => {
+    return this.browser.newPage().then((page) => {
     // Add remaining events
       page.on('console', console.log);
       this.nio.emit('clear');
@@ -228,7 +218,7 @@ class VisualizationServer {
         this.nio.sockets[socket].requestInitialization = true;
       });
 
-      if (!this.interactive) { this.page.goto(`http://127.0.0.1:${this.port}/control`); }
+      if (!this.interactive) { return this.page.goto(`http://127.0.0.1:${this.port}/control`); }
     });
   }
 
@@ -243,8 +233,8 @@ class VisualizationServer {
       delete this.io.nsps[`/internal-view-namespace-${this.id}`];
     }
 
-    if (this.page) this.page.close().then(() => this.initPage(url));
-    else this.initPage(url);
+    if (this.page) return this.page.close().then(() => this.initPage(url));
+    else return this.initPage(url);
   }
 
   /**
@@ -419,14 +409,33 @@ class VisualizationServer {
    * Launch the server
    */
   startServer() {
-    this.http.listen(this.port, () => {
-      this.initializeFileServer();
-      this.initializeCommandServer();
-      this.initializeControl();
-      this.setContent(this.defaultPage);
-      console.log('Server started at port %s', this.port);
-    });
+    return puppeteer.launch({ executablePath: process.env.CHROME_BIN || null, args: ['--no-sandbox'] })
+      .then( (browser) => {
+        this.browser = browser;
+        return new Promise( (resolve, reject) => {
+          this.http.listen(this.port, () => {
+            this.initializeFileServer();
+            this.initializeCommandServer();
+            this.initializeControl();
+            return this.setContent(this.defaultPage).then( () => {
+              resolve();
+            });
+          });
+        });
+      } )
+      .catch( () => {
+        this.stopServer();
+        return new Promise( (resolve, reject) => reject(new Error('Server initialization failed')) );
+      });
   }
+
+  /**
+   * Stop the server
+   */
+  stopServer() {
+    this.http.close(() => this.browser.close());
+  }
+
 }
 
 module.exports = {

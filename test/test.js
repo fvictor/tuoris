@@ -2,6 +2,17 @@
 var expect = require('chai').expect;
 var server = require('../server').VisualizationServer;
 
+describe('Testing server', function () {
+
+  it('Server startup and shutdown', function () {
+    this.timeout(15000); // Server initilization may take more than 2000ms
+    const visServer = new server(8080, false, 'default.html', ['public'], false, []);
+    return visServer.startServer()
+      .then( () => visServer.stopServer() );
+  });
+
+});
+
 describe('Testing isOverlapping', function () {
 
   it('Rects are overlapping', function () {
