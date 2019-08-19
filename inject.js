@@ -110,7 +110,9 @@
       const myStyleSheet = [];
       myStyleSheets.push(myStyleSheet);
       try {
-        if (styleSheet.cssRules) {
+        if (styleSheet.href) {
+          myStyleSheet.push('@import url("' + styleSheet.href + '")');
+        } else if (styleSheet.cssRules) {
           for (let j = 0; j < styleSheet.cssRules.length; j += 1) {
             myStyleSheet.push(styleSheet.cssRules[j].cssText);
           }
@@ -140,6 +142,22 @@
       invSVGScreenCTM = SVGelement.getScreenCTM().inverse();
       point = SVGelement.createSVGPoint();
       changes.push(6, getViewBox(node));
+      const nodeAttributes = node.attributes;
+      if (nodeAttributes) {
+        for (let j = 0; j < nodeAttributes.length; j += 1) {
+          const attrName = nodeAttributes[j].name;
+          // Some attributes have special meanings, the rest must be passed on
+          if (!['style', 'height', 'width', 'preserveAspectRatio', 'viewBox', 'id'].includes(attrName)) {
+            if (!(attrName in attributes)) {
+              attributes[attrName] = [];
+            }
+            const attributeList = attributes[attrName];
+
+            attributeList.push(node.internalID);
+            attributeList.push(node.getAttribute(attrName));
+          }
+        }
+      }
     } else {
       // Parent backup to be used on node deletion event
       node.safeParent = mutation.target;
@@ -154,7 +172,7 @@
 
         changes.push(
           0, node.internalID, node.tagName,
-          mutation.target.internalID, node.namespaceURI,
+          mutation.target.internalID, node.namespaceURI
         );
 
         if (node.tagName === 'text' || typeof node.tagName === 'undefined') {
@@ -242,8 +260,8 @@
       send = false;
       socket.emit('update', changes);
       changes.length = 0;
-      for (attribute in attributes) delete attributes[attribute];
-      for (id in changedIds) delete changedIds[id];
+      for (const attribute in attributes) delete attributes[attribute];
+      for (const id in changedIds) delete changedIds[id];
     }
   }
 

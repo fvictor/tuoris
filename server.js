@@ -56,7 +56,7 @@ class VisualizationServer {
   resetStatus() {
     this.currentStatus = [];
     this.cssRules = [];
-    this.currentStatus[0] = { id: 0 };
+    this.currentStatus[0] = { id: 0, attributes:{} };
     this.viewboxChanged = false;
     this.svgViewbox = [0, 0, 0, 0];
     this.served = false;
@@ -259,6 +259,9 @@ class VisualizationServer {
       const sent = new Set();
       if (this.viewboxChanged) send.push([2, this.svgViewbox]);
       if (this.cssRulesChanged) send.push([1, this.cssRules]);
+      if (this.parentAttributesChanged) {
+        send.push([0, 0, undefined, undefined, undefined, this.currentStatus[0].attributes, undefined]);
+      }
       updated.forEach(id =>
         this.pushElementAndAncestorsByBoundingBox(send, id, sent, socket, viewbox));
       if (send.length > 0) socket.emit('update', send);
@@ -266,6 +269,7 @@ class VisualizationServer {
 
     this.cssRulesChanged = false;
     this.viewboxChanged = false;
+    this.parentAttributesChanged = false;
 
     // Update the old bounding boxes
     this.currentStatus.forEach((element) => { if (Object.prototype.hasOwnProperty.call(element, 'BB')) { const e = element; e.oldBB = element.BB; } });
@@ -321,7 +325,11 @@ class VisualizationServer {
     const name = changes[i + 1];
     const value = changes[i + 2];
     for (let j = 0; j < value.length; j += 2) {
-      updated.add(value[j]);
+      if (value[j] === 0) {
+        this.parentAttributesChanged = true;
+      } else {
+        updated.add(value[j]);
+      }
       this.currentStatus[value[j]].attributes[name] = value[j + 1];
     }
     return 3;
@@ -407,8 +415,8 @@ class VisualizationServer {
   pushElementAndAncestorsByBoundingBox(send, id, sent, socket, viewbox) {
     const element = this.currentStatus[id];
     if (element.BB) {
-      const condition = VisualizationServer.isOverlaping(element.BB, viewbox)
-        || (element.oldBB && VisualizationServer.isOverlaping(element.oldBB, viewbox));
+      const condition = VisualizationServer.isOverlaping(element.BB, viewbox) ||
+        (element.oldBB && VisualizationServer.isOverlaping(element.oldBB, viewbox));
       if (condition) this.pushElementAndAncestors(send, id, sent);
     } else {
       this.pushElementAndAncestors(send, id, sent);
