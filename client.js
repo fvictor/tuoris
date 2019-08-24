@@ -144,20 +144,30 @@ function removeNonVisibleElements(start, processedElements, viewbox, idToHtml) {
       var id = entry[1];
       const hasBoundingBox = entry[7] !== null;
       var node = idToHtml[id];
-      if (id != 0 && hasBoundingBox
-        && !( entry[7] <= viewbox[2] && entry[9] >= viewbox[0] && entry[8] <= viewbox[3] && entry[10] >= viewbox[1])
-        && !node.lastElementChild && node.parentNode)
+      if (id != 0 && hasBoundingBox &&
+        !( entry[7] <= viewbox[2] && entry[9] >= viewbox[0] && entry[8] <= viewbox[3] && entry[10] >= viewbox[1]) &&
+        !node.lastElementChild && node.parentNode)
           node.parentNode.removeChild(node);
     }
   }
-
-  // If not finished, do not remove this entry
-  if(processedElements.length > 0) deleteCount--;
 }
 
 /* Update a given element */
 function updateElement(entry, processedElements, idToHtml) {
   var id = entry[1];
+  if (id === 0) {
+    let attributes = entry[5];
+    let node = idToHtml[0];
+    for (const attributeName in attributes) {
+      const prevValue = node.getAttribute(attributeName);
+      const nextValue = attributes[attributeName];
+      if(prevValue!==nextValue) {
+        if(nextValue===null) node.removeAttribute(attributeName);
+        else node.setAttribute(attributeName, attributes[attributeName]);
+      }
+    }
+    return;
+  }
   processedElements.push(entry);
   var parentID = entry[2];
   var tag = entry[3];
@@ -205,6 +215,9 @@ function loop(idToHtml, viewbox, changes, processedElements) {
           updateViewBox(entry, normalizedViewbox, viewbox, SVGelement);
         } else if(type === 3) {
           removeNonVisibleElements(start, processedElements, viewbox, idToHtml);
+
+          // If not finished, do not remove this entry
+          if(processedElements.length > 0) deleteCount--;
         }
       }
   
